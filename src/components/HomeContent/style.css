@@ -1,0 +1,23 @@
+
+.nav-link.active {
+    color: rgb(236, 39, 39);
+    pointer-events: none; /* Ngăn không cho sự kiện hover xảy ra */
+}
+
+.text-center {
+    display: flex;
+    align-items: center;
+}
+
+.text-center > div {
+    margin: 0 15px;
+}
+
+.hover-card:hover {
+    border: 1px solid rgb(6, 57, 184);
+    cursor: pointer;
+}
+
+.block-span {
+    display:block;
+}
