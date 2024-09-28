@@ -59,3 +59,19 @@
 .result-found > h6 {
   margin-left: 30px;
 }
+
+.card-body-custom {
+  margin-bottom: 0px!important;
+  padding-bottom: 0px!important;
+} 
+.searchSubmit{
+  float:right;
+  padding: 10px;
+  width: 80px;
+  position: relative;
+  top: -48px;
+}
+
+.card-custom-booking {
+  height: 110px;
+}

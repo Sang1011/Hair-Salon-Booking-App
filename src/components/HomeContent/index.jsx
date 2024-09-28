@@ -4,16 +4,35 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import "./style.css";
 import { useEffect, useState } from "react";
 import { useRef } from "react";
+import FilterStatus from "../FilterStatus";
 
 function Content() {
   const [date, setDate] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const dateRef = useRef("");
+  const searchRef = useRef("");
 
   const handleClick = (id) => {
     navigate(`bookingDetail/${id}`);
+  };
+
+  const getBadgeClass = (status) => {
+    switch (status) {
+      case "Pending":
+        return "bg-warning";
+      case "Confirmed":
+        return "bg-primary";
+      case "Rejected":
+        return "bg-danger";
+      case "In-progress":
+        return "bg-info";
+      case "Completed":
+        return "bg-success";
+      case "Cancelled":
+        return "bg-secondary";
+      default:
+        return "bg-light";
+    }
   };
 
   // test
@@ -21,7 +40,7 @@ function Content() {
     {
       bookingID: "G001",
       name: "Nguyen Van A",
-      phone: "09123123123",
+      phone: "0919888333",
       bookingDate: "24/09/2024",
       serviceDate: "28/09/2024",
       stylist: "Ho Van A",
@@ -31,7 +50,7 @@ function Content() {
     {
       bookingID: "C002",
       name: "Nguyen Van B",
-      phone: "09123123124",
+      phone: "0912312334",
       bookingDate: "24/09/2024",
       serviceDate: "27/09/2024",
       stylist: "Ho Van B",
@@ -41,7 +60,7 @@ function Content() {
     {
       bookingID: "C003",
       name: "Nguyen Van C",
-      phone: "09123123125",
+      phone: "0912312312",
       bookingDate: "25/09/2024",
       serviceDate: "29/09/2024",
       stylist: "Ho Van C",
@@ -51,7 +70,7 @@ function Content() {
     {
       bookingID: "G004",
       name: "Nguyen Van A",
-      phone: "09123123123",
+      phone: "0973645892",
       bookingDate: "24/09/2024",
       serviceDate: "28/09/2024",
       stylist: "Ho Van A",
@@ -60,31 +79,77 @@ function Content() {
     },
   ]);
 
+  // accept/deny booking
+  const [filteredBookings, setFilteredBookings] = useState([]);
   const handleStatus = (status, id) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((booking) => {
+    setBookings((prevBookings) => {
+      const updatedBookings = prevBookings.map((booking) => {
         if (booking.bookingID === id) {
           return {
             ...booking,
-            status: status === "ACCEPT" ? "Confirmed" : "Rejected",
+            status: status === "APROVE" ? "Confirmed" : "Rejected",
           };
         }
         return booking;
-      })
-    );
+      });
+      filterBookings(updatedBookings, status === "APROVE" ? "Confirmed" : "Rejected"); 
+
+    return updatedBookings; 
+    });
   };
 
-  const handleSearch = (e) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    const isPhone = /^[0-9]+$/.test(value);
+  const filterBookings = (bookings, statusSet) => {
+    const filtered = bookings.filter((item) => item.status === statusSet);
+    setFilteredBookings(filtered);
+  };
 
-    if (isPhone) {
-      onSearch({ type: "phone", query: value });
-    } else {
-      onSearch({ type: "name", query: value });
+  // accept/deny 
+
+  // start search
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handleSearch = () => {
+    if(searchRef.current){
+      const value = searchRef.current.value;
+      const isValidPhone = /^0\d{9}$/.test(value);
+      const param = new URLSearchParams(searchParams);
+      if(isValidPhone){
+        const filtered = bookings.filter((item) => item.phone === value);
+        param.set("type", "phone");
+        param.set("key", encodeURIComponent(value));
+        setSearchParams(param);
+        setFilteredBookings(filtered);
+      }else if(value.trim() === "" || ""){
+        console.log("space");
+      }
+      else{
+        const filtered = bookings.filter((item) => item.name === value);
+        param.set("type", "name");
+        param.set("key", encodeURIComponent(value));
+        setSearchParams(param);
+        setFilteredBookings(filtered);
+      }
     }
   };
+  
+  useEffect(() => {
+    const type = searchParams.get("type");
+    const key = searchParams.get("key");
+    if (type && key) {
+      searchRef.current.value = key;
+      
+      if (type === "phone") {
+        const filtered = bookings.filter((item) => item.phone === key);
+        setFilteredBookings(filtered);
+      } else if (type === "name") {
+        const filtered = bookings.filter((item) => item.name === key);
+        setFilteredBookings(filtered);
+      }
+    } else {
+      setFilteredBookings(bookings);
+    }
+  }, [searchParams, bookings]);
+
+  // end search
 
   const handleSubmitDate = () => {
     const value = handleBlur;
@@ -103,102 +168,35 @@ function Content() {
   const handleBlur = (e) => {
     return e.target.value;
   };
-
-  const [filteredBookings, setFilteredBookings] = useState([]);
-
-  const handleFilterStatus = (status) => {
-    const params = new URLSearchParams(searchParams);
-    if (status === "All") {
-      params.delete("status");
-      setFilteredBookings(bookings);
-    } else {
-      params.set("status", status);
-      setSearchParams(params);
-    }
-    
-  };
-  useEffect(() => {
-  const status = searchParams.get("status") || ""; 
-    if (status === "All") {
-      setFilteredBookings(bookings); // Hiển thị tất cả bookings khi trạng thái là "All"
-    } else {
-      const filteredBookings = bookings.filter((item) =>
-        status === "" || item.status === status
-      );
-      setFilteredBookings(filteredBookings); // Cập nhật danh sách đã lọc
-    }
-  }, [searchParams, bookings]);
+  
 
   return (
     <>
       <div className="container">
         <div className="card mb-3">
           <div className="card-header">Filter & Search</div>
-          <div className="card-body row">
+          <div className="card-body row card-body-custom">
             <div className="col-md-6">
-              <button
-                className="btn btn-sm ml-1 btn-outline-success active"
-                onClick={(e) => handleFilterStatus("All")}
-              >
-                All
-              </button>
-              <button
-                className="btn btn-sm ml-1 btn-outline-warning"
-                onClick={(e) => handleFilterStatus("Pending")}
-              >
-                Pending
-              </button>
-              <button
-                className="btn btn-sm ml-1 btn-outline-primary"
-                onClick={(e) => handleFilterStatus("Confirmed")}
-              >
-                Confirmed
-              </button>
-              <button
-                className="btn btn-sm ml-1 btn-outline-danger"
-                onClick={(e) => handleFilterStatus("Rejected")}
-              >
-                Rejected
-              </button>
-              <button
-                className="btn btn-sm ml-1 btn-outline-info"
-                onClick={(e) => handleFilterStatus("In-progress")}
-              >
-                In-progress
-              </button>
-              <button
-                className="btn btn-sm ml-1 btn-outline-success"
-                onClick={(e) => handleFilterStatus("Completed")}
-              >
-                Completed
-              </button>
-              <button
-                className="btn btn-sm ml-1 btn-outline-secondary"
-                onClick={(e) => handleFilterStatus("Cancelled")}
-              >
-                Cancelled
-              </button>
-            </div>
+              <FilterStatus bookings={bookings} setFilteredBookings={setFilteredBookings} />
+              </div>
             <div className="col-md-6">
-              <input
+              <input ref={searchRef}
                 type="text"
                 className="form-control"
                 placeholder="Search by phone or name"
-                value={searchQuery}
-                onChange={handleSearch}
               />
+              <input type="submit" className="searchSubmit" onClick={handleSearch}/>
             </div>
           </div>
         </div>
         <div className="row mt-3 justify-content-end align-items-center row-custom">
           <div className="col-md-6 result-found">
-            <h6>{bookings.length} results found</h6>
+            <h6>{filteredBookings.length} results found</h6>
           </div>
           <div className="col-md-3">
             <div className="input-group mb-3">
               <label htmlFor="bookingDate">Search by booking date</label>
               <DatePicker
-                ref={dateRef}
                 selected={date}
                 onChange={(date) => setDate(date)}
                 placeholderText="DD/MM/YYYY"
@@ -228,16 +226,18 @@ function Content() {
           {filteredBookings.map((item, index) => (
             <div key={index}>
               <div
-                className="card mb-3 hover-card"
+                className="card mb-3 hover-card card-custom-booking"
                 onClick={() => handleClick(item.bookingID)}
               >
                 <div className="row g-0">
                   <div className="col-md-3">
                     <div className="card-body">
                       <h5 className="card-title">
-                        AppoinmentID: {item.bookingID}
+                        BookingID: {item.bookingID}
                       </h5>
-                      <p className="card-text">Contact Phone: {item.phone}</p>
+                      <p className="card-text">Contact Phone: {item.phone}<br/>
+                      Name: {item.name}
+                      </p>
                     </div>
                   </div>
                   <div className="col-md-6 text-center">
@@ -259,15 +259,7 @@ function Content() {
                     </div>
                     <div className="Status">
                       <h6>Status</h6>
-                      <span
-                        className={`badge ${
-                          item.status === "Pending"
-                            ? "bg-warning"
-                            : "bg-success"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
+                      <span className={`badge ${getBadgeClass(item.status)}`}>{item.status}</span>
                     </div>
                   </div>
                   {item.status == "Pending" ? (
@@ -279,19 +271,19 @@ function Content() {
                             className="accept"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatus("ACCEPT", item.bookingID);
+                              handleStatus("APROVE", item.bookingID);
                             }}
                           >
-                            ACCEPT
+                            APROVE
                           </a>
                           <a
                             className="deny"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatus("DENY", item.bookingID);
+                              handleStatus("REJECT", item.bookingID);
                             }}
                           >
-                            DENY
+                            REJECT
                           </a>
                         </center>
                       </div>
