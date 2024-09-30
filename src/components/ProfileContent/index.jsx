@@ -94,7 +94,7 @@ function Content() {
                       Gender
                     </label>
                     <select id="gender" className="form-select">
-                      <option value="" disabled selected>
+                      <option value="" disabled>
                         Select your gender
                       </option>
                       <option value="male">Male</option>

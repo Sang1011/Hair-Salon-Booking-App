@@ -1,38 +1,20 @@
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "./style.css";
 import { useEffect, useState } from "react";
-import { useRef } from "react";
 import FilterStatus from "../FilterStatus";
+import { getBadgeClass } from "../../helpers/getBadgeClass";
+import Search from "../Search";
+import DayPicker from "../DayPicker";
+import { search } from "../../helpers/search";
+import SelectOption from "../SelectOptions";
 
 function Content() {
-  const [date, setDate] = useState("");
   const navigate = useNavigate();
-  const dateRef = useRef("");
-  const searchRef = useRef("");
+  const [searchParams, setSearchParams] = useSearchParams();
+
 
   const handleClick = (id) => {
     navigate(`bookingDetail/${id}`);
-  };
-
-  const getBadgeClass = (status) => {
-    switch (status) {
-      case "Pending":
-        return "bg-warning";
-      case "Confirmed":
-        return "bg-primary";
-      case "Rejected":
-        return "bg-danger";
-      case "In-progress":
-        return "bg-info";
-      case "Completed":
-        return "bg-success";
-      case "Cancelled":
-        return "bg-secondary";
-      default:
-        return "bg-light";
-    }
   };
 
   // test
@@ -80,7 +62,7 @@ function Content() {
   ]);
 
   // accept/deny booking
-  const [filteredBookings, setFilteredBookings] = useState([]);
+  const [filteredBookings, setFilteredBookings] = useState(bookings);
   const handleStatus = (status, id) => {
     setBookings((prevBookings) => {
       const updatedBookings = prevBookings.map((booking) => {
@@ -92,83 +74,58 @@ function Content() {
         }
         return booking;
       });
-      filterBookings(updatedBookings, status === "APROVE" ? "Confirmed" : "Rejected"); 
+      filterBooking(
+        updatedBookings,
+        status === "APROVE" ? "Confirmed" : "Rejected"
+      );
 
-    return updatedBookings; 
+      return updatedBookings;
     });
   };
 
-  const filterBookings = (bookings, statusSet) => {
+  const filterBooking = (bookings, statusSet) => {
     const filtered = bookings.filter((item) => item.status === statusSet);
     setFilteredBookings(filtered);
   };
 
-  // accept/deny 
+  // end accept/deny
 
-  // start search
-  const [searchParams, setSearchParams] = useSearchParams();
-  const handleSearch = () => {
-    if(searchRef.current){
-      const value = searchRef.current.value;
-      const isValidPhone = /^0\d{9}$/.test(value);
-      const param = new URLSearchParams(searchParams);
-      if(isValidPhone){
-        const filtered = bookings.filter((item) => item.phone === value);
-        param.set("type", "phone");
-        param.set("key", encodeURIComponent(value));
-        setSearchParams(param);
-        setFilteredBookings(filtered);
-      }else if(value.trim() === "" || ""){
-        console.log("space");
-      }
-      else{
-        const filtered = bookings.filter((item) => item.name === value);
-        param.set("type", "name");
-        param.set("key", encodeURIComponent(value));
-        setSearchParams(param);
-        setFilteredBookings(filtered);
-      }
-    }
-  };
-  
   useEffect(() => {
+    console.log("--------------------------------------")
+    console.log("useEffect is running");
     const type = searchParams.get("type");
-    const key = searchParams.get("key");
-    if (type && key) {
-      searchRef.current.value = key;
-      
-      if (type === "phone") {
-        const filtered = bookings.filter((item) => item.phone === key);
-        setFilteredBookings(filtered);
-      } else if (type === "name") {
-        const filtered = bookings.filter((item) => item.name === key);
-        setFilteredBookings(filtered);
-      }
-    } else {
-      setFilteredBookings(bookings);
+    const key = decodeURIComponent(searchParams.get("key"))
+    const status = searchParams.get("status") || "All";
+    const bookingDate = searchParams.get("bookingDate");
+    console.log("type: " +type);
+    console.log("key: " +key);
+    console.log("status: " +status);
+    console.log("bookingDate: " +bookingDate);
+
+    let filteredBookings = bookings;
+
+    if (status !== "All") {
+        filteredBookings = filteredBookings.filter((item) => item.status === status);
     }
-  }, [searchParams, bookings]);
+    console.log("filter by status: ");
+    console.log(filteredBookings.length);
 
-  // end search
+    
+    if (type && key) {
+        const { filtered } = search(bookings, key);
+        filteredBookings = filtered;
+    }
 
-  const handleSubmitDate = () => {
-    const value = handleBlur;
-    setBookings((prevBookings) =>
-      prevBookings.map((booking) => {
-        if (booking.bookingID === id) {
-          return {
-            ...booking,
-          };
-        }
-        return booking;
-      })
-    );
-  };
+    if (bookingDate) {
+        filteredBookings = filteredBookings.filter((item) => {
+            return item.bookingDate === bookingDate;
+        });
+    }
 
-  const handleBlur = (e) => {
-    return e.target.value;
-  };
-  
+    setFilteredBookings(filteredBookings);
+    console.log("Filtered bookings:", filteredBookings);
+}, [searchParams, bookings]);
+
 
   return (
     <>
@@ -177,15 +134,16 @@ function Content() {
           <div className="card-header">Filter & Search</div>
           <div className="card-body row card-body-custom">
             <div className="col-md-6">
-              <FilterStatus bookings={bookings} setFilteredBookings={setFilteredBookings} />
-              </div>
-            <div className="col-md-6">
-              <input ref={searchRef}
-                type="text"
-                className="form-control"
-                placeholder="Search by phone or name"
+              <FilterStatus
+                bookings={bookings}
+                setFilteredBookings={setFilteredBookings}
               />
-              <input type="submit" className="searchSubmit" onClick={handleSearch}/>
+            </div>
+            <div className="col-md-6">
+              <Search 
+                bookings={bookings}
+                setFilteredBookings={setFilteredBookings}
+              />
             </div>
           </div>
         </div>
@@ -195,31 +153,18 @@ function Content() {
           </div>
           <div className="col-md-3">
             <div className="input-group mb-3">
-              <label htmlFor="bookingDate">Search by booking date</label>
-              <DatePicker
-                selected={date}
-                onChange={(date) => setDate(date)}
-                placeholderText="DD/MM/YYYY"
-                onBlur={handleBlur}
-                className="form-control-Date"
-                dateFormat="dd/MM/yyyy"
-                id="bookingdate"
+              <DayPicker 
+                bookings={bookings}
+                setFilteredBookings={setFilteredBookings}
               />
-              <button onClick={handleSubmitDate} className="dateFind">
-                Find
-              </button>
             </div>
           </div>
 
           <div className="col-md-3">
-            <select className="form-select mb-3">
-              <option>Total Price - Low to High</option>
-              <option>Total Price - High to Low</option>
-              <option>Booking Date (Newest First)</option>
-              <option>Booking Date (Oldest First)</option>
-              <option>Service Date (Soonest First)</option>
-              <option>Service Date (Latest First)</option>
-            </select>
+            <SelectOption 
+            bookings={bookings}
+            setFilteredBookings={setFilteredBookings}
+            />
           </div>
         </div>
         <div className="mt-4">
@@ -235,8 +180,10 @@ function Content() {
                       <h5 className="card-title">
                         BookingID: {item.bookingID}
                       </h5>
-                      <p className="card-text">Contact Phone: {item.phone}<br/>
-                      Name: {item.name}
+                      <p className="card-text">
+                        Contact Phone: {item.phone}
+                        <br />
+                        Name: {item.name}
                       </p>
                     </div>
                   </div>
@@ -259,7 +206,9 @@ function Content() {
                     </div>
                     <div className="Status">
                       <h6>Status</h6>
-                      <span className={`badge ${getBadgeClass(item.status)}`}>{item.status}</span>
+                      <span className={`badge ${getBadgeClass(item.status)}`}>
+                        {item.status}
+                      </span>
                     </div>
                   </div>
                   {item.status == "Pending" ? (
